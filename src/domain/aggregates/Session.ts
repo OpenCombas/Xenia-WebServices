@@ -18,6 +18,7 @@ interface SessionProps {
   title: string;
   mediaId: string;
   version: string;
+  xeniaVersion: string;
   flags: SessionFlags;
   hostAddress: IpAddress;
   macAddress: MacAddress;
@@ -38,6 +39,7 @@ interface CreateProps {
   title: string;
   mediaId: string;
   version: string;
+  xeniaVersion: string;
   flags: SessionFlags;
   hostAddress: IpAddress;
   macAddress: MacAddress;
@@ -293,6 +295,10 @@ export default class Session {
 
   get version() {
     return this.props.version;
+  }
+
+  get xeniaVersion() {
+    return this.props.xeniaVersion;
   }
 
   get hostAddress() {

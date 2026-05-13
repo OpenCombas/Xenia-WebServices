@@ -39,6 +39,7 @@ export default class SessionDomainMapper {
       title: session.title,
       mediaId: session.mediaId,
       version: session.version,
+      xeniaVersion: session.xeniaVersion,
       flags: new SessionFlags(session.flags),
       hostAddress: new IpAddress(session.hostAddress),
       macAddress: new MacAddress(session.macAddress),

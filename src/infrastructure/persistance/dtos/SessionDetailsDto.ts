@@ -1,6 +1,7 @@
 export interface SessionDetailsDto {
   title: string;
   version: string;
+  xeniaVersion: string;
   mediaId: string;
   xuid: string;
   id: string;

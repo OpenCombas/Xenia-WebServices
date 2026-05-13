@@ -18,6 +18,8 @@ export class Session {
   @Prop({ required: true })
   version: string;
   @Prop({ required: true })
+  xeniaVersion: string;
+  @Prop({ required: true })
   hostAddress: string;
   @Prop({ required: true })
   macAddress: string;

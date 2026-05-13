@@ -9,6 +9,7 @@ export default class SessionDetailsPresentationMapper {
     return {
       title: session.title,
       version: session.version,
+      xeniaVersion: session.xeniaVersion,
       mediaId: session.mediaId,
       xuid: session.xuid.value,
       id: session.id.value,

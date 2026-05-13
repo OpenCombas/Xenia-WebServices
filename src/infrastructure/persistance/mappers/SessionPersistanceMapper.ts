@@ -16,6 +16,7 @@ export default class SessionPersistanceMapper {
       title: session.title,
       mediaId: session.mediaId,
       version: session.version,
+      xeniaVersion: session.xeniaVersion,
       hostAddress: session.hostAddress.value,
       flags: session.flags.value,
       publicSlotsCount: session.publicSlotsCount,

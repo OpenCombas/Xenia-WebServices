@@ -12,6 +12,7 @@ export class CreateSessionCommand {
     public readonly title: string,
     public readonly mediaId: string,
     public readonly version: string,
+    public readonly xeniaVersion: string,
     public readonly sessionId: SessionId,
     public readonly hostAddress: IpAddress,
     public readonly flags: SessionFlags,

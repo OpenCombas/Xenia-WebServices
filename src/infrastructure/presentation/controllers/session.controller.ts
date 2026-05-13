@@ -115,6 +115,7 @@ export class SessionController {
           request.title,
           request.mediaId,
           request.version,
+          request.xeniaVersion,
           new SessionId(request.sessionId),
           new IpAddress(request.hostAddress),
           new SessionFlags(request.flags),

@@ -21,6 +21,7 @@ export class CreateSessionCommandHandler implements ICommandHandler<CreateSessio
       title: command.title,
       mediaId: command.mediaId,
       version: command.version,
+      xeniaVersion: command.xeniaVersion,
       flags: command.flags,
       hostAddress: command.hostAddress,
       publicSlotsCount: command.publicSlotsCount,
