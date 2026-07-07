@@ -4,6 +4,7 @@ import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Delete, Param, Query } from '@nestjs/common/decorators';
 import IpAddress from 'src/domain/value-objects/IpAddress';
 import MacAddress from 'src/domain/value-objects/MacAddress';
+import SyntheticIp from 'src/domain/value-objects/SyntheticIp';
 import { DeleteSessionsCommand } from 'src/application/commands/DeleteSessionCommand';
 import { RealIP } from 'nestjs-real-ip';
 import { ProcessClientAddressCommand } from 'src/application/commands/ProcessClientAddressCommand';
@@ -26,7 +27,15 @@ export class XNetController {
   }
 
   @Get('/whoami')
-  async getClientAddress(@RealIP() ip: string) {
+  @ApiQuery({ name: 'mac', description: 'Console MAC Address', required: false })
+  async getClientAddress(@RealIP() ip: string, @Query('mac') mac?: string) {
+    // Under GNS a console's online IP is the synthetic MAC-derived address, not
+    // its real public IP. If the caller passes its MAC, return the authoritative
+    // synthetic IP; otherwise fall back to the observed source IP (non-GNS).
+    if (mac) {
+      return { address: SyntheticIp.fromMac(new MacAddress(mac)).value };
+    }
+
     const ipv4 = await this.commandBus.execute(
       new ProcessClientAddressCommand(ip),
     );
@@ -38,20 +47,36 @@ export class XNetController {
   @ApiQuery({ name: 'hostAddress', description: 'IP Address', required: false })
   @ApiParam({ name: 'macAddress', description: 'Mac Address', required: false })
   async deleteAllSessions(
-    @RealIP() ip: string,
     @Query('hostAddress') hostAddress?: string,
     @Param('macAddress') macAddress?: string,
   ) {
-    let ipv4 = hostAddress ? hostAddress : ip;
-
-    ipv4 = await this.commandBus.execute(new ProcessClientAddressCommand(ipv4));
-
     let mac: MacAddress = null;
 
     try {
       mac = new MacAddress(macAddress);
     } catch {
-      this.logger.debug('Deleting session(s) based on IP!');
+      // No (valid) MAC supplied; fall through to the hostAddress path below.
+    }
+
+    // Sessions/players are keyed by the synthetic (MAC-derived) hostAddress, not the
+    // caller's real HTTP source IP. Resolve the delete target from the MAC (preferred)
+    // or an explicitly-provided hostAddress. A bare call (no MAC, no hostAddress) has
+    // no safe target: deleting by the real source IP would either no-op (sessions are
+    // keyed by synthetic IP) or, behind a shared NAT/relay, risk another console's
+    // sessions — so it is a deliberate no-op.
+    let ipv4: string;
+
+    if (mac) {
+      ipv4 = SyntheticIp.fromMac(mac).value;
+    } else if (hostAddress) {
+      ipv4 = await this.commandBus.execute(
+        new ProcessClientAddressCommand(hostAddress),
+      );
+    } else {
+      this.logger.warn(
+        'DeleteSessions called without a MAC or hostAddress; ignoring (a MAC is required to target sessions).',
+      );
+      return;
     }
 
     await this.commandBus.execute(

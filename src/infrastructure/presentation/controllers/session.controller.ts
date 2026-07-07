@@ -10,13 +10,14 @@ import {
   ConsoleLogger,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import TitleId from 'src/domain/value-objects/TitleId';
-import { Body, Post, Req, Res } from '@nestjs/common/decorators';
+import { Body, Post, Query, Req, Res } from '@nestjs/common/decorators';
 import { CreateSessionRequest } from '../requests/CreateSessionRequest';
 import { CreateSessionCommand } from 'src/application/commands/CreateSessionCommand';
 import SessionId from 'src/domain/value-objects/SessionId';
 import IpAddress from 'src/domain/value-objects/IpAddress';
+import SyntheticIp from 'src/domain/value-objects/SyntheticIp';
 import SessionFlags from 'src/domain/value-objects/SessionFlags';
 import { GetSessionQuery } from 'src/application/queries/GetSessionQuery';
 import { SessionSearchQuery } from 'src/application/queries/SessionSearchQuery';
@@ -76,6 +77,33 @@ export class SessionController {
     this.logger.setContext(SessionController.name);
   }
 
+  // Follow a session's migration hand-off chain to the current (live) session, so a
+  // caller holding a migrated-away id (a cached search result or squad roster entry)
+  // is steered to the new host instead of reading the departed host's stale,
+  // soft-deleted session. Guards against cycles / unbounded chains.
+  private async resolveLiveSession(
+    titleId: TitleId,
+    session: Session,
+  ): Promise<Session> {
+    const seen = new Set<string>();
+
+    while (session?.migration && !seen.has(session.id.value)) {
+      seen.add(session.id.value);
+
+      const next: Session = await this.queryBus.execute(
+        new GetSessionQuery(titleId, session.migration),
+      );
+
+      if (!next) {
+        break;
+      }
+
+      session = next;
+    }
+
+    return session;
+  }
+
   @Post()
   @ApiParam({ name: 'titleId', example: '4D5307E6' })
   async createSession(
@@ -87,6 +115,12 @@ export class SessionController {
     if (flags.isHost) {
       this.logger.verbose('Host creating session: ' + request.sessionId);
 
+      // Server-authoritative online IP: derive from the host MAC so the session's
+      // published hostAddress equals SyntheticInaFromPeerKey(MAC) — matching the
+      // host's GNS advertise and the joiner's XNetXnAddrToInAddr mapping.
+      const macAddress = new MacAddress(request.macAddress);
+      const hostAddress: IpAddress = SyntheticIp.fromMac(macAddress);
+
       let player: Player;
 
       if (request.xuid) {
@@ -95,9 +129,8 @@ export class SessionController {
         );
       } else {
         // Fallback for backwards compatibility older netplay builds don't provide xuid.
-        player = await this.queryBus.execute(
-          new FindPlayerQuery(new IpAddress(request.hostAddress)),
-        );
+        // Look up by the derived synthetic IP so it matches the stored player.
+        player = await this.queryBus.execute(new FindPlayerQuery(hostAddress));
       }
 
       // If player is not registered then refuse to create session.
@@ -116,11 +149,11 @@ export class SessionController {
           request.mediaId,
           request.version,
           new SessionId(request.sessionId),
-          new IpAddress(request.hostAddress),
+          hostAddress,
           new SessionFlags(request.flags),
           request.publicSlotsCount,
           request.privateSlotsCount,
-          new MacAddress(request.macAddress),
+          macAddress,
           request.port,
         ),
       );
@@ -178,13 +211,16 @@ export class SessionController {
     @Param('titleId') titleId: string,
     @Param('sessionId') sessionId: string,
   ) {
-    const session: Session = await this.queryBus.execute(
+    let session: Session = await this.queryBus.execute(
       new GetSessionQuery(new TitleId(titleId), new SessionId(sessionId)),
     );
 
     if (!session) {
       throw new NotFoundException(`Session ${sessionId} was not found.`);
     }
+
+    // If this session has been migrated to a new host, return the live one.
+    session = await this.resolveLiveSession(new TitleId(titleId), session);
 
     return this.sessionMapper.mapToPresentationModel(session);
   }
@@ -205,13 +241,16 @@ export class SessionController {
       throw new NotFoundException(`Session ${sessionId} was not found.`);
     }
 
+    // Server-authoritative online IP: derive from the (new) host MAC, as in create.
+    const macAddress = new MacAddress(request.macAddress);
+
     const newSession: Session = await this.commandBus.execute(
       new MigrateSessionCommand(
         new TitleId(titleId),
         new SessionId(sessionId),
         request.xuid ? new Xuid(request.xuid) : undefined,
-        new IpAddress(request.hostAddress),
-        new MacAddress(request.macAddress),
+        SyntheticIp.fromMac(macAddress),
+        macAddress,
         request.port,
       ),
     );
@@ -240,17 +279,15 @@ export class SessionController {
   @Delete('/:sessionId')
   @ApiParam({ name: 'titleId', example: '4D5307E6' })
   @ApiParam({ name: 'sessionId', example: 'AE00000000000000' })
+  @ApiQuery({ name: 'macAddress', description: 'Host MAC Address', required: false })
   async deleteSession(
     @Param('titleId') titleId: string,
     @Param('sessionId') sessionId: string,
     @RealIP() ip: string,
+    @Query('macAddress') macAddress?: string,
   ) {
     const session = await this.queryBus.execute(
       new GetSessionQuery(new TitleId(titleId), new SessionId(sessionId)),
-    );
-
-    const ipv4 = await this.commandBus.execute(
-      new ProcessClientAddressCommand(ip),
     );
 
     if (!session) {
@@ -258,9 +295,28 @@ export class SessionController {
       return;
     }
 
-    if (session.hostAddress.value !== ipv4) {
+    // Ownership check. The session's hostAddress is now the synthetic (MAC-derived)
+    // online IP, which no longer equals the caller's real HTTP source IP — so we
+    // authorize by MAC when the client supplies it (the session stores the host
+    // MAC), and fall back to the legacy RealIP compare for older clients.
+    let authorized: boolean;
+    let requester: string;
+
+    if (macAddress) {
+      requester = macAddress.toUpperCase();
+      authorized = session.macAddress.value === requester;
+    } else {
+      requester = await this.commandBus.execute(
+        new ProcessClientAddressCommand(ip),
+      );
+      authorized = session.hostAddress.value === requester;
+    }
+
+    if (!authorized) {
       this.logger.debug(
-        `Client ${ipv4} attempted to delete session created by ${session.hostAddress.value}`,
+        `Client ${requester} attempted to delete session created by ${
+          macAddress ? session.macAddress.value : session.hostAddress.value
+        }`,
       );
       this.logger.debug(`Session ${sessionId} will not be deleted.`);
       return;
@@ -299,13 +355,17 @@ export class SessionController {
     @Param('titleId') titleId: string,
     @Param('sessionId') sessionId: string,
   ): Promise<SessionDetailsResponse> {
-    const session: Session = await this.queryBus.execute(
+    let session: Session = await this.queryBus.execute(
       new GetSessionQuery(new TitleId(titleId), new SessionId(sessionId)),
     );
 
     if (!session) {
       throw new NotFoundException(`Session ${sessionId} was not found.`);
     }
+
+    // If this session has been migrated to a new host, return the live one so late
+    // joiners connect to the current host rather than the departed one.
+    session = await this.resolveLiveSession(new TitleId(titleId), session);
 
     const xuids: string[] = Array.from(session.players.keys());
 

@@ -32,3 +32,9 @@ export class Player {
 }
 
 export const PlayerSchema = SchemaFactory.createForClass(Player);
+
+// hostAddress is the synthetic (MAC-derived) online IP; both it and the MAC are
+// used to look players up (session-create fallback, delete-my-profiles, session
+// cleanup), so index them.
+PlayerSchema.index({ hostAddress: 1 });
+PlayerSchema.index({ macAddress: 1 });

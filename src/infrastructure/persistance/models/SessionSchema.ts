@@ -55,3 +55,8 @@ export class Session {
 export const SessionSchema = SchemaFactory.createForClass(Session);
 
 SessionSchema.index({ id: 1, titleId: 1 }, { unique: true });
+
+// hostAddress (synthetic, MAC-derived) and macAddress key the session-cleanup
+// lookups (findSessionsByIPAndMac / DeleteSessions).
+SessionSchema.index({ hostAddress: 1 });
+SessionSchema.index({ macAddress: 1 });
