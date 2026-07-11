@@ -22,6 +22,13 @@ export default abstract class AbstractEnvSettings<T> {
         HEROKU_BUILD_COMMIT: process.env.HEROKU_BUILD_COMMIT,
         START_TIME: new Date().toISOString(),
       },
+      // Cloudflare Realtime TURN: short-lived STUN/TURN creds served to consoles via GET /turn. Unset
+      // keyId/apiToken -> /turn returns an empty body and the client falls back to its own CVAR defaults.
+      turn: {
+        keyId: process.env.TURN_KEY_ID ? process.env.TURN_KEY_ID : '',
+        apiToken: process.env.TURN_API_TOKEN ? process.env.TURN_API_TOKEN : '',
+        ttl: process.env.TURN_TTL ? parseInt(process.env.TURN_TTL) : 3600,
+      },
     };
   }
 
