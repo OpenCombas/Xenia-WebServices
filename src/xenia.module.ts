@@ -3,6 +3,7 @@ import { ApplicationModule } from './application/application.module';
 import { DomainModule } from './domain/domain.module';
 import { PersistanceModule } from './infrastructure/persistance/persistance.module';
 import { PresentationModule } from './infrastructure/presentation/presentation.module';
+import { PartyModule } from './party/party.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -13,6 +14,7 @@ import { join } from 'path';
     DomainModule,
     PersistanceModule,
     PresentationModule,
+    PartyModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'src/public'),
       serveRoot: '/',
