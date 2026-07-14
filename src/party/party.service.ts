@@ -17,6 +17,7 @@ import { IPlayerRepositorySymbol } from 'src/domain/repositories/IPlayerReposito
 import type IPlayerRepository from 'src/domain/repositories/IPlayerRepository';
 import Xuid from 'src/domain/value-objects/Xuid';
 import { PartyResponse, PollResponse } from './dto/party.dto';
+import { EventsService } from '../events/events.service';
 
 // Full-mesh Opus stays sane at a small friend-party size.
 export const MAX_PARTY_MEMBERS = 8;
@@ -56,6 +57,7 @@ export class PartyService {
     private readonly invites: Model<PartyInviteDocument>,
     @Inject(IPlayerRepositorySymbol)
     private readonly players: IPlayerRepository,
+    private readonly events: EventsService,
   ) {}
 
   async create(ownerXuid: string): Promise<PartyResponse> {
@@ -106,6 +108,10 @@ export class PartyService {
       { $set: { fromXuid, fromGamertag: from.gamertag, createdAt: new Date() } },
       { upsert: true },
     );
+    this.events.push(targetXuid, {
+      type: 'party.invite',
+      payload: { partyId, fromXuid, fromGamertag: from.gamertag },
+    });
     await this.touch(party);
     return { ok: true };
   }
@@ -131,6 +137,7 @@ export class PartyService {
     party.lastActivity = new Date();
     await party.save();
     await this.invites.deleteOne({ partyId, targetXuid: xuid });
+    this.emitRoster(party);
     return this.toResponse(party);
   }
 
@@ -150,6 +157,7 @@ export class PartyService {
     party.members = remaining;
     party.lastActivity = new Date();
     await party.save();
+    this.emitRoster(party);
     return { ok: true, dissolved: false };
   }
 
@@ -215,6 +223,7 @@ export class PartyService {
     callerXuid: string,
   ): Promise<PartyDocument | null> {
     const now = Date.now();
+    const before = party.members.length;
     for (const m of party.members) {
       if (m.xuid === callerXuid) m.lastPoll = new Date(now);
     }
@@ -225,12 +234,30 @@ export class PartyService {
     }
     party.lastActivity = new Date(now);
     await party.save();
+    if (party.members.length !== before) this.emitRoster(party); // a member was reaped
     return party;
   }
 
   private async dissolve(partyId: string): Promise<void> {
+    const party = await this.parties.findOne({ partyId });
+    const memberXuids = party ? party.members.map((m) => m.xuid) : [];
     await this.parties.deleteOne({ partyId });
     await this.invites.deleteMany({ partyId });
+    if (memberXuids.length) {
+      this.events.pushMany(memberXuids, {
+        type: 'party.dissolved',
+        payload: { partyId },
+      });
+    }
+  }
+
+  // Push the current roster to every member (party.roster event).
+  private emitRoster(party: PartyDocument): void {
+    const roster = this.toResponse(party);
+    this.events.pushMany(
+      roster.members.map((m) => m.xuid),
+      { type: 'party.roster', payload: roster },
+    );
   }
 
   private async touch(party: PartyDocument): Promise<void> {

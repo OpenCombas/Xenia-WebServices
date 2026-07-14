@@ -8,6 +8,7 @@ import PersistanceSettings from 'src/infrastructure/persistance/settings/Persist
 import compression from 'compression';
 import helmet from 'helmet';
 import { ConsoleLogger } from '@nestjs/common';
+import { WsAdapter } from '@nestjs/platform-ws';
 import fs from 'fs';
 
 async function bootstrap() {
@@ -22,6 +23,10 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(XeniaModule, {
     rawBody: true,
   });
+
+  // Live-events WebSocket (`/events`) uses raw `ws` (not socket.io) to match the
+  // client's libcurl plain-WebSocket. See EventsGateway.
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   const SSL_enabled = envs.SSL == 'true';
   const Swagger_enabled = envs.swagger_API == 'true';

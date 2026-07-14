@@ -4,6 +4,8 @@ import { DomainModule } from './domain/domain.module';
 import { PersistanceModule } from './infrastructure/persistance/persistance.module';
 import { PresentationModule } from './infrastructure/presentation/presentation.module';
 import { PartyModule } from './party/party.module';
+import { FriendsModule } from './friends/friends.module';
+import { EventsGatewayModule } from './events/events-gateway.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -15,6 +17,8 @@ import { join } from 'path';
     PersistanceModule,
     PresentationModule,
     PartyModule,
+    FriendsModule,
+    EventsGatewayModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'src/public'),
       serveRoot: '/',

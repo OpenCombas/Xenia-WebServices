@@ -8,10 +8,11 @@ import {
   PartyInviteSchema,
 } from './schemas/party-invite.schema';
 import { PersistanceModule } from 'src/infrastructure/persistance/persistance.module';
+import { EventsModule } from '../events/events.module';
 
 // Standalone party/voice-roster service. Owns its own `parties` + `partyInvites`
-// collections; imports PersistanceModule only to reuse IPlayerRepository for
-// gamertag + console-MAC (peer_key) enrichment from the login-time Players record.
+// collections; imports PersistanceModule (IPlayerRepository for gamertag + console-MAC
+// enrichment) and EventsModule (push party.* events over the live-events WS).
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -19,6 +20,7 @@ import { PersistanceModule } from 'src/infrastructure/persistance/persistance.mo
       { name: PartyInvite.name, schema: PartyInviteSchema },
     ]),
     PersistanceModule,
+    EventsModule,
   ],
   controllers: [PartyController],
   providers: [PartyService],
