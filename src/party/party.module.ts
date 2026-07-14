@@ -24,5 +24,6 @@ import { EventsModule } from '../events/events.module';
   ],
   controllers: [PartyController],
   providers: [PartyService],
+  exports: [PartyService], // EventsGatewayModule needs it for the connect snapshot
 })
 export class PartyModule {}

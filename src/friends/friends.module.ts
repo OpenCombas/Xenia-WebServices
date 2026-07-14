@@ -22,5 +22,6 @@ import { EventsModule } from '../events/events.module';
   ],
   controllers: [FriendsController],
   providers: [FriendsService],
+  exports: [FriendsService], // EventsGatewayModule needs it for the connect snapshot
 })
 export class FriendsModule {}
