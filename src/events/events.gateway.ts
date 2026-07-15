@@ -60,10 +60,13 @@ export class EventsGateway
     const snapshot = await this.snapshotFor(xuid);
     client.send(JSON.stringify({ type: 'snapshot', payload: snapshot }));
 
-    // Tell this console's friends + party members it's online.
+    // Tell this console's friends + party members it's online. The `presence` delta carries
+    // the FULL FriendPresence shape (xuid, gamertag, numeric state, titleId, sessionId,
+    // richPresence, online) — the same shape as the snapshot/GET /friends — so the client parses
+    // an online transition identically to an offline one (isOnline is true here, so state is live).
     this.events.pushMany(this.interested(snapshot), {
       type: 'presence',
-      payload: { xuid, online: true },
+      payload: await this.friends.presenceFor(xuid),
     });
   }
 
@@ -74,9 +77,11 @@ export class EventsGateway
     this.logger.log(`WS disconnect: ${xuid}${wentOffline ? ' (offline)' : ''}`);
     if (wentOffline) {
       const snapshot = await this.snapshotFor(xuid);
+      // unregister() ran above, so isOnline(xuid) is already false -> presenceFor returns the
+      // offline shape (state 0). Same full-shape delta as the online transition.
       this.events.pushMany(this.interested(snapshot), {
         type: 'presence',
-        payload: { xuid, online: false },
+        payload: await this.friends.presenceFor(xuid),
       });
     }
   }

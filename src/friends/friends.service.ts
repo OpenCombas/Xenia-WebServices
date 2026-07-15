@@ -182,31 +182,39 @@ export class FriendsService {
     });
   }
 
-  private async presenceFor(xuid: string): Promise<FriendPresence> {
+  // Presence for one xuid. Liveness is derived from the live WS connection (events.isOnline),
+  // NOT the stored Player doc: a console that isn't connected reports OFFLINE (state 0, no
+  // title/session/richPresence) regardless of any stale state left in its login record (which
+  // has a 1-day TTL and is only refreshed by title-driven presence updates). This fixes three
+  // reported bugs: (1) an accepted friend must stay in the list with state=0 when offline
+  // (list() always includes them; never dropped); (2) stale "online/in-game" state surviving a
+  // disconnect; (3) presence appearing "online" before a console has actually connected. Public
+  // so the events gateway can build the same shape for its `presence` WS deltas.
+  public async presenceFor(xuid: string): Promise<FriendPresence> {
     const online = this.events.isOnline(xuid);
     const p = await this.players.findByXuid(new Xuid(xuid));
-    if (!p) {
-      // No login record (never logged in / TTL-expired) -> minimal, DB-offline.
+    const gamertag = p && p.gamertag ? p.gamertag.value : '';
+    if (!online) {
       return {
         xuid,
-        gamertag: '',
+        gamertag,
         state: 0,
         sessionId: '',
         titleId: '0',
         stateChangeTime: 0,
         richPresence: '',
-        online,
+        online: false,
       };
     }
     return {
-      xuid: p.xuid.value,
-      gamertag: p.gamertag ? p.gamertag.value : '',
-      state: p.state ? p.state.value : 0,
-      sessionId: p.sessionId ? p.sessionId.value : '',
-      titleId: p.titleId ? p.titleId.toString() : '0',
+      xuid,
+      gamertag,
+      state: p && p.state ? p.state.value : 0,
+      sessionId: p && p.sessionId ? p.sessionId.value : '',
+      titleId: p && p.titleId ? p.titleId.toString() : '0',
       stateChangeTime: 0,
-      richPresence: p.richPresence ?? '',
-      online,
+      richPresence: p && p.richPresence ? p.richPresence : '',
+      online: true,
     };
   }
 

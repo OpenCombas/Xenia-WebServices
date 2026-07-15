@@ -6,6 +6,7 @@ import {
   SessionSchema,
 } from 'src/infrastructure/persistance/models/SessionSchema';
 import { PersistanceModule } from 'src/infrastructure/persistance/persistance.module';
+import { RecentModule } from 'src/recent/recent.module';
 import { CreatePlayerCommandHandler } from './commandHandlers/CreatePlayerCommandHandler';
 import { CreateSessionCommandHandler } from './commandHandlers/CreateSessionCommandHandler';
 import { AddSessionContextCommandHandler } from './commandHandlers/AddSessionContextCommandHandler';
@@ -77,6 +78,7 @@ export const commandHandlers = [
   imports: [
     CqrsModule,
     PersistanceModule,
+    RecentModule, // JoinSessionCommandHandler captures encounters via RecentService
     MongooseModule.forFeature([{ name: Session.name, schema: SessionSchema }]),
   ],
   providers: [...queryHandlers, ...commandHandlers],
