@@ -138,6 +138,6 @@ export class EventsGateway
         c.isAlive = false;
         c.ping();
       }
-    }, 30_000);
+    }, 15_000);
   }
 }

@@ -35,8 +35,22 @@ export class EventsService {
     return false;
   }
 
+  // Online iff the xuid has at least one OPEN socket. Critically this checks readyState, not just map
+  // presence: a socket that closed uncleanly (Xenia crash / half-open TCP) or is mid-close lingers in the
+  // set until unregister/heartbeat runs, and counting it would report stale "online" presence. Any
+  // non-OPEN socket found here is pruned on the spot, so presence self-heals on the next read instead of
+  // waiting for the ~30s heartbeat.
   isOnline(xuid: string): boolean {
-    return this.sockets.has(xuid);
+    const set = this.sockets.get(xuid);
+    if (!set) return false;
+    for (const s of set) {
+      if (s.readyState !== WebSocket.OPEN) set.delete(s);
+    }
+    if (set.size === 0) {
+      this.sockets.delete(xuid);
+      return false;
+    }
+    return true;
   }
 
   push(xuid: string, event: ServerEvent): void {
