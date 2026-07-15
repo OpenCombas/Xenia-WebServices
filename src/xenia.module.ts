@@ -6,6 +6,7 @@ import { PresentationModule } from './infrastructure/presentation/presentation.m
 import { PartyModule } from './party/party.module';
 import { FriendsModule } from './friends/friends.module';
 import { RecentModule } from './recent/recent.module';
+import { LogsModule } from './logs/logs.module';
 import { EventsGatewayModule } from './events/events-gateway.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -20,6 +21,7 @@ import { join } from 'path';
     PartyModule,
     FriendsModule,
     RecentModule,
+    LogsModule,
     EventsGatewayModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'src/public'),
