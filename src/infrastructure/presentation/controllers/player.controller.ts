@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ConsoleLogger,
   Get,
+  Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags } from '@nestjs/swagger';
@@ -14,6 +15,7 @@ import Xuid from 'src/domain/value-objects/Xuid';
 import Gamertag from 'src/domain/value-objects/Gamertag';
 import IpAddress from 'src/domain/value-objects/IpAddress';
 import MacAddress from 'src/domain/value-objects/MacAddress';
+import SyntheticIp from 'src/domain/value-objects/SyntheticIp';
 import { FindPlayerRequest } from '../requests/FindPlayerRequest';
 import { FindPlayerQuery } from 'src/application/queries/FindPlayerQuery';
 import type { PlayerResponse } from 'src/infrastructure/presentation/responses/PlayerResponse';
@@ -57,6 +59,13 @@ export class PlayerController {
   async createPlayer(@Body() request: CreatePlayerRequest) {
     // what if xuid or mac address fails?
 
+    // Server-authoritative online IP: derive it from the console MAC rather than
+    // trusting the client-reported hostAddress, so the address we store/publish
+    // equals SyntheticInaFromPeerKey(MAC) — the value the client's GNS routing
+    // (host advertise / joiner XNetXnAddrToInAddr / inbound auto-register) uses.
+    const macAddress = new MacAddress(request.macAddress);
+    const hostAddress: IpAddress = SyntheticIp.fromMac(macAddress);
+
     const user_settings = new Map<string, Array<UserSetting>>();
 
     if (request?.settings) {
@@ -79,8 +88,8 @@ export class PlayerController {
       new CreatePlayerCommand(
         new Xuid(request.xuid),
         new Xuid(request.machineId),
-        new IpAddress(request.hostAddress),
-        new MacAddress(request.macAddress),
+        hostAddress,
+        macAddress,
         request.gamertag ? new Gamertag(request.gamertag) : undefined,
         request.settings ? user_settings : undefined,
       ),
@@ -383,10 +392,20 @@ export class PlayerController {
   }
 
   @Get('/deletemyprofiles')
-  async DeleteAllMyProfiles(@RealIP() ip: string) {
-    const ipv4: string = await this.commandBus.execute(
-      new ProcessClientAddressCommand(ip),
-    );
+  async DeleteAllMyProfiles(
+    @RealIP() ip: string,
+    @Query('macAddress') macAddress?: string,
+  ) {
+    // Profiles are now keyed by the synthetic (MAC-derived) hostAddress, which no
+    // longer equals the caller's real HTTP source IP. Prefer the MAC when the
+    // client supplies it; fall back to RealIP for legacy callers.
+    let ipv4: string;
+
+    if (macAddress) {
+      ipv4 = SyntheticIp.fromMac(new MacAddress(macAddress)).value;
+    } else {
+      ipv4 = await this.commandBus.execute(new ProcessClientAddressCommand(ip));
+    }
 
     const profiles: Player[] = await this.queryBus.execute(
       new DeleteMyProfilesQuery(new IpAddress(ipv4)),

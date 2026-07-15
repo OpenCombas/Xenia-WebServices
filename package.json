@@ -6,7 +6,7 @@
   "private": true,
   "license": "MIT",
   "engines": {
-    "node": "^20 || ^22"
+    "node": "^22 || ^24"
   },
   "scripts": {
     "heroku-prebuild": "git clone --branch main https://github.com/AdrianCassar/TitleManagedStorageArchiveXbox360.git ./src/xstorage/title",
@@ -41,9 +41,11 @@
     "@nestjs/cqrs": "^11.0.3",
     "@nestjs/mongoose": "^11.0.4",
     "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/platform-ws": "^11.1.28",
     "@nestjs/sequelize": "^11.0.1",
     "@nestjs/serve-static": "^5.0.5",
     "@nestjs/swagger": "^11.4.2",
+    "@nestjs/websockets": "^11.1.28",
     "axios": "^1.16.0",
     "compression": "^1.8.1",
     "console-table-printer": "^2.15.0",
@@ -58,7 +60,8 @@
     "rimraf": "^6.1.3",
     "rxjs": "^7.8.2",
     "tiny-types": "^2.0.5",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",
@@ -70,6 +73,7 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^25.6.2",
     "@types/supertest": "^7.2.0",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
     "eslint": "^10.3.0",
