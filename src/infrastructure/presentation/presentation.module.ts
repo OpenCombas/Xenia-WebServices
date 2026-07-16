@@ -10,9 +10,10 @@ import { IndexController } from './controllers/index.controller';
 import { XStorageController } from './controllers/xstorage.controller';
 import SessionPresentationMapper from './mappers/SessionPresentationMapper';
 import SessionDetailsPresentationMapper from './mappers/SessionDetailsPresentationMapper';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [CqrsModule],
+  imports: [CqrsModule, AuthModule],
   controllers: [
     TitleController,
     XNetController,

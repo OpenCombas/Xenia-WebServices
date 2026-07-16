@@ -42,6 +42,7 @@ import UserSetting, {
 } from 'src/domain/value-objects/UserSetting';
 import { SettingsUpdateRequest } from '../requests/SettingsUpdateRequest';
 import { Table } from 'console-table-printer';
+import { AuthService } from 'src/auth/auth.service';
 
 @ApiTags('Player')
 @Controller('/players')
@@ -51,6 +52,7 @@ export class PlayerController {
     private readonly logger: ConsoleLogger,
     private readonly queryBus: QueryBus,
     private readonly commandBus: CommandBus,
+    private readonly auth: AuthService,
   ) {
     this.logger.setContext(PlayerController.name);
   }
@@ -96,6 +98,11 @@ export class PlayerController {
     );
 
     player.PrettyPrintUserSettingsTable();
+
+    // Folded auth (adr-0002): claim the xuid / re-issue a token from the client-generated password. Runs on
+    // EVERY boot, so it's idempotent and never throws — an auth mismatch just yields no token, and player
+    // registration above still succeeds. Returns { token, recoveryCode? } (empty object when tokenless).
+    return this.auth.registerOrReissue(request.xuid, request.password);
   }
 
   @Post('/find')

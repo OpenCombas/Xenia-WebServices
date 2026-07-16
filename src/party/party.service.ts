@@ -166,6 +166,13 @@ export class PartyService {
     return { ok: true };
   }
 
+  // leaveByXuid removes a player from whatever party they're in (owner-leave -> dissolve). Used by exit
+  // teardown (/goodbye + WS-disconnect). Idempotent: no party -> no-op.
+  async leaveByXuid(xuid: string): Promise<void> {
+    const party = await this.parties.findOne({ 'members.xuid': xuid });
+    if (party) await this.leave(party.partyId, xuid);
+  }
+
   // The push-via-poll: returns the caller's current party (with the full roster) +
   // their pending invites, and doubles as the caller's liveness heartbeat.
   async poll(xuid: string): Promise<PollResponse> {
