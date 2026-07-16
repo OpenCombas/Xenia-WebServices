@@ -10,6 +10,8 @@ import { IncomingMessage } from 'http';
 import { EventsService } from './events.service';
 import { PartyService } from '../party/party.service';
 import { FriendsService } from '../friends/friends.service';
+import { AuthService } from '../auth/auth.service';
+import { TeardownService } from '../teardown/teardown.service';
 import Xuid from 'src/domain/value-objects/Xuid';
 
 interface IdentifiedSocket extends WebSocket {
@@ -30,10 +32,17 @@ export class EventsGateway
 
   private heartbeat?: ReturnType<typeof setInterval>;
 
+  // WS-disconnect catch-all grace window: only tear down if the console stays offline this long (tolerates a
+  // transient reconnect / brief network blip before nuking a live session).
+  private readonly teardownGraceMs =
+    parseInt(process.env.GOODBYE_WS_GRACE_MS ?? '', 10) || 5000;
+
   constructor(
     private readonly events: EventsService,
     private readonly party: PartyService,
     private readonly friends: FriendsService,
+    private readonly auth: AuthService,
+    private readonly teardown: TeardownService,
     private readonly logger: ConsoleLogger,
   ) {
     this.logger.setContext(EventsGateway.name);
@@ -44,7 +53,7 @@ export class EventsGateway
     client: IdentifiedSocket,
     req: IncomingMessage,
   ): Promise<void> {
-    const xuid = this.extractXuid(req);
+    const xuid = await this.resolveXuid(req);
     if (!xuid) {
       client.close(1008, 'missing or invalid xuid');
       return;
@@ -83,6 +92,18 @@ export class EventsGateway
         type: 'presence',
         payload: await this.friends.presenceFor(xuid),
       });
+
+      // WS-disconnect catch-all: if the console stays offline past the grace window (tolerating a transient
+      // reconnect), tear down its transient state — the safety net for crashes/kills that never POST
+      // /goodbye. Idempotent with /goodbye (both may fire on a clean exit). MAC is resolved server-side.
+      const t = setTimeout(() => {
+        if (!this.events.isOnline(xuid)) {
+          void this.teardown
+            .teardown(xuid)
+            .catch((e) => this.logger.warn(`ws-disconnect teardown ${xuid}: ${e}`));
+        }
+      }, this.teardownGraceMs);
+      t.unref();
     }
   }
 
@@ -90,9 +111,15 @@ export class EventsGateway
     if (this.heartbeat) clearInterval(this.heartbeat);
   }
 
-  private extractXuid(req: IncomingMessage): string | null {
+  // Identify the connecting console. Prefer `?token=` (verify -> xuid); a present-but-invalid token is
+  // rejected. Fall back to the legacy `?xuid=` while auth is in the soft phase (tokenless clients).
+  private async resolveXuid(req: IncomingMessage): Promise<string | null> {
     try {
       const url = new URL(req.url ?? '', 'http://localhost');
+      const token = url.searchParams.get('token');
+      if (token) {
+        return await this.auth.verifyToken(token); // null if invalid/expired
+      }
       const raw = url.searchParams.get('xuid');
       return raw ? new Xuid(raw).value : null;
     } catch {

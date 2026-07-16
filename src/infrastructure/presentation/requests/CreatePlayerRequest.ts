@@ -13,4 +13,8 @@ export class CreatePlayerRequest {
   macAddress: string;
   @ApiProperty()
   settings: Map<string, Array<string>>;
+  // Client-generated device-secret (base64url). When present, RegisterPlayer claims/re-issues auth and the
+  // response carries { token, recoveryCode? }. Optional — a tokenless (legacy) client omits it. See adr-0002.
+  @ApiProperty({ required: false })
+  password?: string;
 }
