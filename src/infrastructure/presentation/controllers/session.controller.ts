@@ -279,7 +279,11 @@ export class SessionController {
   @Delete('/:sessionId')
   @ApiParam({ name: 'titleId', example: '4D5307E6' })
   @ApiParam({ name: 'sessionId', example: 'AE00000000000000' })
-  @ApiQuery({ name: 'macAddress', description: 'Host MAC Address', required: false })
+  @ApiQuery({
+    name: 'macAddress',
+    description: 'Host MAC Address',
+    required: false,
+  })
   async deleteSession(
     @Param('titleId') titleId: string,
     @Param('sessionId') sessionId: string,
@@ -839,9 +843,24 @@ export class SessionController {
       return;
     }
 
-    const propertyMappings = JSON.parse(
-      readFileSync(statsConfigPath, 'utf8'),
-    ).properties;
+    const statsConfig = JSON.parse(readFileSync(statsConfigPath, 'utf8'));
+    const propertyMappings = statsConfig.properties;
+
+    // Which views are ARBITRATED, i.e. reported redundantly by every session member so the service can
+    // cross-check them. Two sources, mirroring Xenia's own test
+    // (IsTrueSkillViewID(view_id) || spa_view.view.arbitrated):
+    //   * the reserved TrueSkill view 0xFFFF0000, arbitrated by definition and not declared in any SPA view
+    //   * any view the title's SPA declares arbitrated, surfaced in the config's _leaderboards block
+    // Everything else is submitted by exactly one authoritative console, so it must NOT be de-duplicated --
+    // FlushStats sends non-arbitrated views incrementally during play, and those repeats are legitimate
+    // progressive updates carrying different values.
+    const TRUESKILL_VIEW_ID = '4294901760'; // 0xFFFF0000
+    const arbitratedViewIds = new Set<string>([TRUESKILL_VIEW_ID]);
+    for (const board of statsConfig._leaderboards ?? []) {
+      if (board.arbitrated && board.viewId) {
+        arbitratedViewIds.add(String(parseInt(board.viewId, 16)));
+      }
+    }
 
     await Promise.all(
       Object.entries(request.leaderboards).map(
@@ -870,6 +889,8 @@ export class SessionController {
               new TitleId(titleId),
               new Xuid(request.xuid),
               stats,
+              sessionId,
+              arbitratedViewIds.has(leaderboardId),
             ),
           );
         },
