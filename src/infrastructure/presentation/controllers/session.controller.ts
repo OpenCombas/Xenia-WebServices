@@ -64,6 +64,11 @@ import { PreJoinRequest } from '../requests/PreJoinRequest';
 import Property, { X_USER_DATA_TYPE } from 'src/domain/value-objects/Property';
 import { StateFlags } from 'src/domain/value-objects/StateFlag';
 
+// The aggregation methods Leaderboard.update() actually implements. Keep in sync with that switch: a
+// stats.json entry naming anything else silently freezes the stat at its first value (see the check below).
+// Note 'set' is the spelling for XDK kLast semantics -- 'last' is NOT recognised.
+const LEADERBOARD_UPDATE_METHODS = new Set(['sum', 'set', 'min', 'max']);
+
 @ApiTags('Sessions')
 @Controller('/title/:titleId/sessions')
 export class SessionController {
@@ -872,6 +877,19 @@ export class SessionController {
 
             if (!propertyMapping) {
               this.logger.warn('UNKNOWN STAT ID FOR PROPERTY ' + propId);
+              return;
+            }
+
+            // An unrecognised method is NOT harmless. Leaderboard.update() matches the method against a fixed
+            // set and simply falls through when none match -- so the stat is created with its first-ever value
+            // and then frozen, never updating again. That looks like a working stat for exactly one match,
+            // which is the hardest kind of failure to notice. Fail loudly instead of storing a stuck value.
+            if (!LEADERBOARD_UPDATE_METHODS.has(propertyMapping.method)) {
+              this.logger.error(
+                `UNSUPPORTED METHOD '${propertyMapping.method}' for property ${propId} in ${titleId} ` +
+                  `stats.json -- expected one of ${[...LEADERBOARD_UPDATE_METHODS].join(', ')}. ` +
+                  `Skipping this stat rather than writing a value that would never update.`,
+              );
               return;
             }
 

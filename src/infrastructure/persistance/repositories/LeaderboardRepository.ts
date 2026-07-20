@@ -90,6 +90,14 @@ export default class LeaderboardRepository implements ILeaderboardRepository {
       );
       return 'duplicate-mismatch';
     }
+    // Logged even though agreement is the EXPECTED case. Without this, a working ledger and a ledger that
+    // never ran are indistinguishable from the outside: the agree path would drop the report silently, which
+    // looks exactly like arbitrated-view detection failing to match. This line is the only positive evidence
+    // that the claim + compare actually executed, so it is a verification signal, not noise.
+    this.logger.log(
+      `Arbitrated report duplicate-agree session=${sessionId} view=${id.value} player=${player.value} ` +
+        `stats=${JSON.stringify(values)}`,
+    );
     return 'duplicate-agree';
   }
 

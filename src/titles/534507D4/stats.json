@@ -7,6 +7,14 @@
     "SPA embedded in the XEX. An earlier revision guessed statIds sequentially and inferred aggregation from",
     "write behaviour; both now come from the title's own declaration. No inference remains in this file.",
     "",
+    "\u26a0 KEY FORMAT IS LOAD-BEARING AND NOT OBVIOUS. The controller looks properties up by",
+    "PropertyId.toString(), which is `0x` + value.toString(16).toLowerCase() -- i.e. LOWERCASE hex with NO",
+    "leading zeros. So 0x2000004D must be written 0x2000004d, and 0x00000002 must be written 0x2. A key in any",
+    "other form silently fails to match and the property is dropped with 'UNKNOWN STAT ID FOR PROPERTY' -- the",
+    "write still 200s, so nothing surfaces except a warning in the server log. An earlier revision of this file",
+    "used uppercase, fixed-width keys; twelve of eighteen matched by coincidence (all-digit, 8-wide) and six",
+    "were silently discarded until a capture showed the warnings.",
+    "",
     "statId = the SPA Field ORDINAL. Chosen over attributeId because ordinal is globally stable for a property",
     "across every view, whereas attributeId is view-relative (a property carries the reserved 0xFFFE in the",
     "view where it is the rating column and a numbered id elsewhere) -- and this file must express ONE mapping",
@@ -65,7 +73,19 @@
     "Non-arbitrated views must NOT be de-duplicated: FlushStats sends them incrementally during play and those",
     "repeats are legitimate progressive updates carrying different values.",
     "",
-    "\u26a0 The 0x1000800x statIds (100/101) remain arbitrary; nothing in the SPA pins them."
+    "\u26a0 The 0x1000800x statIds (100/101) are LOCAL storage ordinals we assign; they are not SPA-declared.",
+    "",
+    "\u26a0 0x1000800a / 0x1000800b ARE NOT TITLE STATS. They are reserved XDK arbitration properties, defined in",
+    "src/domain/value-objects/Property.ts: RELATIVE_SCORE = 0x1000800a, SESSION_TEAM = 0x1000800b. They are the",
+    "TrueSkill arbitration payload -- per-match score and team assignment -- not career counters, and not a",
+    "win/loss record. Earlier revisions of this file described them as 'games played' and '+1 win / 0 draw /",
+    "-1 loss'. Both were wrong, and both had 'sum' applied: summing a team id across matches is meaningless, and",
+    "summing a per-match relative score produces a number with no interpretation. Corrected to 'last'.",
+    "",
+    "That mislabelling survived as long as it did because it was never measured. It was asserted from memory and",
+    "then cited as though observed -- specifically the claim that values -1, 0 and +1 had been seen. Every",
+    "arbitration reading in every capture to date is 1. There is no -1 anywhere. If a future note here claims a",
+    "value was observed, it should name the capture file it came from."
   ],
   "properties": {
     "0x10000042": {
@@ -73,7 +93,7 @@
       "method": "set",
       "statId": 2
     },
-    "0x00000002": {
+    "0x2": {
       "info": "SPA ordinal 3, aggregation Last (0x8001)",
       "method": "set",
       "statId": 3
@@ -123,17 +143,17 @@
       "method": "sum",
       "statId": 11
     },
-    "0x2000004D": {
+    "0x2000004d": {
       "info": "SPA ordinal 12, aggregation Sum (0x8003); RATING/sort column of view(s) 0x00000032",
       "method": "sum",
       "statId": 12
     },
-    "0x2000004E": {
+    "0x2000004e": {
       "info": "SPA ordinal 13, aggregation Sum (0x8003); RATING/sort column of view(s) 0x00000058",
       "method": "sum",
       "statId": 13
     },
-    "0x2000004F": {
+    "0x2000004f": {
       "info": "SPA ordinal 14, aggregation Sum (0x8003); RATING/sort column of view(s) 0x0000007E",
       "method": "sum",
       "statId": 14
@@ -153,14 +173,14 @@
       "method": "sum",
       "statId": 17
     },
-    "0x1000800A": {
-      "info": "ARBITRATION view 0xFFFF0000 (not a declared SPA view): always 1. sum = games played, but ONE report per SESSION -- see the arbitration note in _comment.",
-      "method": "sum",
+    "0x1000800a": {
+      "info": "X_PROPERTY_RELATIVE_SCORE (reserved XDK arbitration property, see domain/value-objects/Property.ts). NOT a title stat and NOT 'games played'. Per-match TrueSkill input. 'last' because summing a per-match relative score across matches produces a meaningless running total.",
+      "method": "set",
       "statId": 100
     },
-    "0x1000800B": {
-      "info": "ARBITRATION view 0xFFFF0000 (not a declared SPA view): +1 win / 0 draw / -1 loss. sum = net record, but ONE report per SESSION -- see the arbitration note in _comment.",
-      "method": "sum",
+    "0x1000800b": {
+      "info": "X_PROPERTY_SESSION_TEAM (reserved XDK arbitration property, see domain/value-objects/Property.ts). NOT a title stat and NOT a win/loss record -- it is which TEAM the player was on. MUST NOT be summed: adding team ids across matches is meaningless.",
+      "method": "set",
       "statId": 101
     }
   },
