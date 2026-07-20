@@ -6,6 +6,10 @@ import LeaderboardRepository from './repositories/LeaderboardRepository';
 import LeaderboardPersistanceMapper from './mappers/LeaderboardPersistanceMapper';
 import LeaderboardDomainMapper from './mappers/LeaderboardDomainMapper';
 import { Leaderboard, LeaderboardSchema } from './models/LeaderboardSchema';
+import {
+  ArbitrationReport,
+  ArbitrationReportSchema,
+} from './models/ArbitrationReportSchema';
 import { IPlayerRepositorySymbol } from 'src/domain/repositories/IPlayerRepository';
 import PlayerRepository from './repositories/PlayerRepository';
 import PlayerPersistanceMapper from './mappers/PlayerPersistanceMapper';
@@ -25,6 +29,7 @@ const persistanceSettings = new PersistanceSettings().get();
     MongooseModule.forFeature([
       { name: Session.name, schema: SessionSchema },
       { name: Leaderboard.name, schema: LeaderboardSchema },
+      { name: ArbitrationReport.name, schema: ArbitrationReportSchema },
       { name: Player.name, schema: PlayerSchema },
     ]),
   ],

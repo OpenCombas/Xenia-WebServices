@@ -1,0 +1,334 @@
+{
+  "_comment": [
+    "ChromeHounds (534507D4) leaderboard property map.",
+    "",
+    "GENERATED FROM THE TITLE'S OWN SPA. Source: one boot with --dump_stats_schema=true (client build",
+    "f6f9a019b), captured at workspaces/logs/dump_stats/xenia.log -- 278 stats views parsed by Xenia from the",
+    "SPA embedded in the XEX. An earlier revision guessed statIds sequentially and inferred aggregation from",
+    "write behaviour; both now come from the title's own declaration. No inference remains in this file.",
+    "",
+    "statId = the SPA Field ORDINAL. Chosen over attributeId because ordinal is globally stable for a property",
+    "across every view, whereas attributeId is view-relative (a property carries the reserved 0xFFFE in the",
+    "view where it is the rating column and a numbered id elsewhere) -- and this file must express ONE mapping",
+    "for all views. Reserved attribute ids: 0xFFFF Rank, 0xFFFD Gamertag, 0xFFFE Rating.",
+    "",
+    "method comes from the SPA AggregationType enum (xam/xdbf/spa_info.h):",
+    "  kLast = 0x8001 (32769) -> set        kSum = 0x8003 (32771) -> sum",
+    "  (kMax = 0x800B, kMin = 0x8009 -- neither occurs in this title.)",
+    "",
+    "THE TWO KINDS MATTER, and conflating them silently discards data. Corroborated against the write capture",
+    "at workspaces/logs/pilot_rankings/webservices_excerpt.log:",
+    "  * Last columns arrive as CUMULATIVE career totals. 0x20000044 held 72706 across four consecutive",
+    "    writes; 0x20000048 climbed 21278 -> 24983. The client accumulates, the server takes the latest.",
+    "  * Sum columns arrive as PER-MATCH DELTAS. 0x20000050 went 1173 -> 804 -> 855 -> 2046 and 0x2000004D",
+    "    fell 398 -> 287 -- a decrease is a legitimate negative delta, not a total going backwards. Storing",
+    "    these with 'set' would keep only the LAST match's delta and discard the career value, on eight",
+    "    columns, silently, while looking perfectly plausible in the database.",
+    "\u26a0 An earlier note in this file said 'the server stores snapshots, it does not accumulate'. That is true",
+    "of the Last columns ONLY. It was derived from fields that happened all to be Last. Do not restate it.",
+    "",
+    "Every view declares exactly ONE rating column (attributeId 0xFFFE) -- the board's sort key, and what a",
+    "ranked-query endpoint must order by. See _leaderboards below: 15 boards, view-id <-> name mapping",
+    "OPERATOR-VERIFIED by visiting each board in a known order against 30 enumerator calls (15 x ByXUID+ByRank).",
+    "",
+    "THE Last/Sum SPLIT IS SKILL-vs-COUNTER, NOT TOTAL-vs-SEASON. An earlier revision of this file guessed the",
+    "latter and it was wrong. The six Last-rated views are exactly the six role-class SKILL Totals -- a skill",
+    "LEVEL is a current value, so it is snapshotted. Everything else is Sum: Free Battle and Shots Fired are",
+    "COUNTERS, and every Seasonal board accumulates within its season.",
+    "",
+    "\u26a0 DO NOT DERIVE SEASONAL VIEW IDS FROM TOTAL VIEW IDS. The two groups are ordered differently and only",
+    "SOL coincides; a rule fitted to the totals mis-assigns four of the six seasonals. Use the table.",
+    "\u26a0 View 0x0B (Free Battle Total) is arbitrated=1 with only 5 columns, structurally unlike the other 14",
+    "18-column views. Its rating property 0x20000006 appears in NO other board -- do not assume the 18-column",
+    "shape when handling it.",
+    "",
+    "Ordinal is a safe global statId: no property takes more than one ordinal across the 15 boards. Ordinal 4",
+    "is used by BOTH 0x20000006 and 0x20000043, but they never co-occur in a view and storage is per",
+    "(leaderboard id, player), so the duplicate is harmless.",
+    "",
+    "Ordinals 0 and 1 (0x10008001 Rank, 0x40008002 Gamer Name) are derived columns the title never writes and",
+    "are deliberately NOT mapped; the server supplies rank and gamertag itself.",
+    "",
+    "ARBITRATED VIEWS ARE REPORTED REDUNDANTLY BY DESIGN. Arbitrated stats are a CONSENSUS mechanism: every",
+    "session member reports its view of every player's result, and the service compares them before applying",
+    "the delta once -- disagreement means the session was tampered with. So Xenia submits arbitrated views from",
+    "every console for every player, and duplicate reports are EXPECTED, not a bug.",
+    "",
+    "\u26a0 'sum' on the two 0x1000800x entries therefore means sum ACROSS MATCHES, ONCE PER MATCH -- never sum",
+    "across the reports received. Applying every report would multiply the delta by the player count on exactly",
+    "the columns arbitration exists to protect. The write path enforces this outside this file: the controller",
+    "flags arbitrated views (the reserved 0xFFFF0000, plus any view the SPA declares arbitrated via",
+    "_leaderboards[].arbitrated) and UpdateLeaderboardCommandHandler claims each (session, view, player) exactly",
+    "once through ArbitrationReport's unique index. First report applies; later ones are compared and logged on",
+    "mismatch. See ArbitrationReportSchema for the policy and why apply-once was chosen over strict unanimity.",
+    "",
+    "Non-arbitrated views must NOT be de-duplicated: FlushStats sends them incrementally during play and those",
+    "repeats are legitimate progressive updates carrying different values.",
+    "",
+    "\u26a0 The 0x1000800x statIds (100/101) remain arbitrary; nothing in the SPA pins them."
+  ],
+  "properties": {
+    "0x10000042": {
+      "info": "SPA ordinal 2, aggregation Last (0x8001)",
+      "method": "set",
+      "statId": 2
+    },
+    "0x00000002": {
+      "info": "SPA ordinal 3, aggregation Last (0x8001)",
+      "method": "set",
+      "statId": 3
+    },
+    "0x20000006": {
+      "info": "SPA ordinal 4, aggregation Sum (0x8003); RATING/sort column of view(s) 0x0000000B",
+      "method": "sum",
+      "statId": 4
+    },
+    "0x20000043": {
+      "info": "SPA ordinal 4, aggregation Sum (0x8003); RATING/sort column of view(s) 0x00000004",
+      "method": "sum",
+      "statId": 4
+    },
+    "0x20000044": {
+      "info": "SPA ordinal 5, aggregation Last (0x8001); RATING/sort column of view(s) 0x00000005",
+      "method": "set",
+      "statId": 5
+    },
+    "0x20000049": {
+      "info": "SPA ordinal 6, aggregation Last (0x8001); RATING/sort column of view(s) 0x0000000A",
+      "method": "set",
+      "statId": 6
+    },
+    "0x20000046": {
+      "info": "SPA ordinal 7, aggregation Last (0x8001); RATING/sort column of view(s) 0x00000008",
+      "method": "set",
+      "statId": 7
+    },
+    "0x20000048": {
+      "info": "SPA ordinal 8, aggregation Last (0x8001); RATING/sort column of view(s) 0x00000007",
+      "method": "set",
+      "statId": 8
+    },
+    "0x20000047": {
+      "info": "SPA ordinal 9, aggregation Last (0x8001); RATING/sort column of view(s) 0x00000006",
+      "method": "set",
+      "statId": 9
+    },
+    "0x20000045": {
+      "info": "SPA ordinal 10, aggregation Last (0x8001); RATING/sort column of view(s) 0x00000009",
+      "method": "set",
+      "statId": 10
+    },
+    "0x20000053": {
+      "info": "SPA ordinal 11, aggregation Sum (0x8003); RATING/sort column of view(s) 0x0000000C",
+      "method": "sum",
+      "statId": 11
+    },
+    "0x2000004D": {
+      "info": "SPA ordinal 12, aggregation Sum (0x8003); RATING/sort column of view(s) 0x00000032",
+      "method": "sum",
+      "statId": 12
+    },
+    "0x2000004E": {
+      "info": "SPA ordinal 13, aggregation Sum (0x8003); RATING/sort column of view(s) 0x00000058",
+      "method": "sum",
+      "statId": 13
+    },
+    "0x2000004F": {
+      "info": "SPA ordinal 14, aggregation Sum (0x8003); RATING/sort column of view(s) 0x0000007E",
+      "method": "sum",
+      "statId": 14
+    },
+    "0x20000050": {
+      "info": "SPA ordinal 15, aggregation Sum (0x8003); RATING/sort column of view(s) 0x000000A4",
+      "method": "sum",
+      "statId": 15
+    },
+    "0x20000051": {
+      "info": "SPA ordinal 16, aggregation Sum (0x8003); RATING/sort column of view(s) 0x000000CA",
+      "method": "sum",
+      "statId": 16
+    },
+    "0x20000052": {
+      "info": "SPA ordinal 17, aggregation Sum (0x8003); RATING/sort column of view(s) 0x000000F0",
+      "method": "sum",
+      "statId": 17
+    },
+    "0x1000800A": {
+      "info": "ARBITRATION view 0xFFFF0000 (not a declared SPA view): always 1. sum = games played, but ONE report per SESSION -- see the arbitration note in _comment.",
+      "method": "sum",
+      "statId": 100
+    },
+    "0x1000800B": {
+      "info": "ARBITRATION view 0xFFFF0000 (not a declared SPA view): +1 win / 0 draw / -1 loss. sum = net record, but ONE report per SESSION -- see the arbitration note in _comment.",
+      "method": "sum",
+      "statId": 101
+    }
+  },
+  "_leaderboards": [
+    {
+      "viewId": "0x0000000B",
+      "board": "Free Battle",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": true,
+      "columns": 5,
+      "sortProperty": "0x20000006",
+      "sortStatId": 4,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000004",
+      "board": "Shots Fired",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000043",
+      "sortStatId": 4,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x0000000C",
+      "board": "Shots Fired",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000053",
+      "sortStatId": 11,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000005",
+      "board": "SOL Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000044",
+      "sortStatId": 5,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x00000032",
+      "board": "SOL Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x2000004D",
+      "sortStatId": 12,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000008",
+      "board": "DEF Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000046",
+      "sortStatId": 7,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x0000007E",
+      "board": "DEF Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x2000004F",
+      "sortStatId": 14,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000009",
+      "board": "SNP Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000045",
+      "sortStatId": 10,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x000000F0",
+      "board": "SNP Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000052",
+      "sortStatId": 17,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000006",
+      "board": "SCT Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000047",
+      "sortStatId": 9,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x000000CA",
+      "board": "SCT Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000051",
+      "sortStatId": 16,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x00000007",
+      "board": "HVG Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000048",
+      "sortStatId": 8,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x000000A4",
+      "board": "HVG Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000050",
+      "sortStatId": 15,
+      "sortAggregation": "Sum"
+    },
+    {
+      "viewId": "0x0000000A",
+      "board": "CMD Skill",
+      "scope": "Total",
+      "spaName": "test",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x20000049",
+      "sortStatId": 6,
+      "sortAggregation": "Last"
+    },
+    {
+      "viewId": "0x00000058",
+      "board": "CMD Skill",
+      "scope": "Seasonal",
+      "spaName": "season leader board",
+      "arbitrated": false,
+      "columns": 18,
+      "sortProperty": "0x2000004E",
+      "sortStatId": 13,
+      "sortAggregation": "Sum"
+    }
+  ]
+}
