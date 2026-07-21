@@ -81,28 +81,27 @@ function generateSessionsTable(sessionsData) {
       const icon_asset = titleInfo.icon || 'assets/icon.svg';
       const icon = `<div class="image"><img src="${icon_asset}" width="64" height="64" alt="${title}" title="${title}"></div>`;
 
-      const HOST_GAMERTAG = session.host_gamertag;
-      const host_gamertag_div = HOST_GAMERTAG
-        ? `<div id="host_gamertag" style="white-space: pre-line;margin-top: 15px;">${HOST_GAMERTAG}</div>`
-        : '';
-
+      // PLAYER IDENTIFIERS ARE NOT RENDERED.
+      //
+      // The /sessions payload still contains host_gamertag, host_xuid and the real gamertag roster, and
+      // that endpoint is unauthenticated -- so this is a casual-browsing measure, not a privacy boundary.
+      // It stops the public page from publishing a live who-is-online-right-now list to anyone who loads
+      // the root URL. To make it an actual boundary, strip the fields server-side in
+      // AggregateSessionCommandHandler instead.
+      //
+      // The roster is replaced with positional labels so the occupancy grid keeps its shape and count.
       const HOST_PRESENCE = session.host_presence;
       const presence_div = HOST_PRESENCE
         ? `<div style="white-space: pre-line;">${HOST_PRESENCE}</div>`
         : '';
 
-      const HOST_XUID = session.host_xuid;
-      const host_xuid_button = HOST_XUID
-        ? `<button class="copy-xuid-btn" data-xuid="${HOST_XUID}" style="margin-top: 5px;">Copy XUID</button>`
-        : '';
-
-      let player_gamertags = 'Player 1';
+      let player_slots = 'Player 1';
 
       if (Array.isArray(session.players)) {
-        player_gamertags = session.players
+        player_slots = session.players
           .map(
-            (player, index) =>
-              `<div ${index == 0 ? 'id="host_item"' : ''} class="list-item">${player}</div>`,
+            (_player, index) =>
+              `<div ${index == 0 ? 'id="host_item"' : ''} class="list-item">Player ${index + 1}</div>`,
           )
           .join('');
       }
@@ -118,9 +117,7 @@ function generateSessionsTable(sessionsData) {
             ${icon}
             <div class="box">
               <div id="game_title"><a href="https://github.com/xenia-project/game-compatibility/issues?q=is:issue%20is:open ${titleInfo.titleId}" target="_blank">${title}</a></div>
-              ${host_gamertag_div}
               ${presence_div}
-              ${host_xuid_button}
             </div>
             <div class="box">
               <div class="entry">Title ID: ${titleInfo.titleId}</div>
@@ -131,7 +128,7 @@ function generateSessionsTable(sessionsData) {
         </td>
         <td>
           <div ${gridAdjustment} class="list-container" id="list">
-            ${player_gamertags ? player_gamertags : 'Player 1'}
+            ${player_slots ? player_slots : 'Player 1'}
           </div>
           <label>${session.players.length ? session.players.length : '1'} of ${session.total}</label>
         </td>
@@ -239,28 +236,6 @@ function setIntervalImmediately(func, interval) {
 $(document).ready(function () {
   setIntervalImmediately(refreshTimer, 1000);
   refreshSessionTable();
-});
-
-$(document).on('click', '.copy-xuid-btn', function () {
-  const $btn = $(this);
-  const xuid = $btn.data('xuid');
-
-  navigator.clipboard
-    .writeText(xuid)
-    .then(() => {
-      $btn.css('border', '2px solid green');
-
-      setTimeout(() => {
-        $btn.css('border', '');
-      }, 2000);
-    })
-    .catch((err) => {
-      $btn.css('border', '2px solid red');
-
-      setTimeout(() => {
-        $btn.css('border', '');
-      }, 2000);
-    });
 });
 
 $(document).on('click', '#server_details_btn', function () {

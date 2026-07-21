@@ -73,11 +73,6 @@ tr:nth-child(even) {
     border-radius: 5px;
 }
 
-#host_gamertag {
-    font-weight: bold;
-    font-size: 16px;
-}
-
 #game_title {
     font-weight: bold;
     font-size: 18px;
@@ -95,14 +90,6 @@ button {
     text-align: center;
     text-decoration: none;
     display: inline-block;
-}
-
-.copy-xuid-btn {
-    transition: border 0.3s ease;
-    border-radius: 2px;
-    border: 2px solid white;
-    padding: 5px 15px;
-    font-size: 14px;
 }
 
 .entry {
@@ -154,7 +141,4 @@ ul, li {
         padding: 5px;
     }
 
-    .copy-xuid-btn {
-        display: none;
-    }
 }
