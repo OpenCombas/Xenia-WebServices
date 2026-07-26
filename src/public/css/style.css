@@ -1,6 +1,6 @@
 body {
     font-family: 'Segoe UI', sans-serif;
-    background-color: #181a1b;
+    background-color: #111212;
     color: #e8e6e3;
 }
 
@@ -141,4 +141,45 @@ ul, li {
         padding: 5px;
     }
 
+}
+
+/* ChromeHounds Neroimus War -- online/total players by nation table (top of page).
+   Colors are per-nation: online = bright, total = darker shade of the same hue. */
+#nation_stats {
+  margin: 0.5rem auto 1.25rem;
+}
+.nation-table {
+  margin: 0 auto;
+  border-collapse: collapse;
+}
+.nation-table th,
+.nation-table td {
+  padding: 0.4rem 1.3rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.nation-table th {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.nation-table td {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+/* Nation A -- Tarakia (blue) */
+.nation-table th.nation-A { color: #0100ff; }
+.nation-table td.nation-A .online { color: #0100ff; }
+.nation-table td.nation-A .total  { color: #0100b3; }
+/* Nation B -- Morskoj (red) */
+.nation-table th.nation-B { color: #ff0000; }
+.nation-table td.nation-B .online { color: #ff0000; }
+.nation-table td.nation-B .total  { color: #b30000; }
+/* Nation C -- Sal Kar (green) */
+.nation-table th.nation-C { color: #00d300; }
+.nation-table td.nation-C .online { color: #00d300; }
+.nation-table td.nation-C .total  { color: #008600; }
+.nation-legend {
+  color: #888;
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
 }
