@@ -191,6 +191,27 @@ function refreshSessionTable() {
     });
 }
 
+// ChromeHounds war stats: online (in-title) / total (registered) players by nation, from the standalone
+// chapi service fronted at /chapi. Fails soft (leaves "?") when the endpoint isn't reachable.
+function refreshNationStats() {
+  $.getJSON(window.origin + '/chapi/api/players-by-nation')
+    .done(function (data) {
+      ['A', 'B', 'C'].forEach(function (n) {
+        const online = data.online && data.online[n] != null ? data.online[n] : 0;
+        const total = data.registered && data.registered[n] != null ? data.registered[n] : 0;
+        $('#nation-' + n + '-online').text(online);
+        $('#nation-' + n + '-total').text(total);
+      });
+    })
+    .fail(function (jqXHR) {
+      console.log(`Nation stats error ${jqXHR.status}`);
+      ['A', 'B', 'C'].forEach(function (n) {
+        $('#nation-' + n + '-online').text('?');
+        $('#nation-' + n + '-total').text('?');
+      });
+    });
+}
+
 function formatUTCToDDHHMMSS(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const days = Math.floor(totalSeconds / (60 * 60 * 24));
@@ -218,6 +239,7 @@ function refreshTimer() {
   if (time <= 0) {
     time = 30;
     refreshSessionTable();
+    refreshNationStats();
   }
 
   if (document.readyState === 'complete') {
@@ -236,6 +258,7 @@ function setIntervalImmediately(func, interval) {
 $(document).ready(function () {
   setIntervalImmediately(refreshTimer, 1000);
   refreshSessionTable();
+  refreshNationStats();
 });
 
 $(document).on('click', '#server_details_btn', function () {

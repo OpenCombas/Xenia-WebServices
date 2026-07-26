@@ -8,7 +8,7 @@
         <link rel="apple-touch-icon" type="image/png" href="assets/favicon.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="Server Status" />
-        <meta name="theme-color" content="#181a1b" />
+        <meta name="theme-color" content="#111212" />
 
         <!-- OG Meta Tags -->
         <meta property="og:url" content="https://xenia-netplay-2a0298c0e3f4.herokuapp.com/" />
@@ -32,6 +32,27 @@
     <body>
       <div style="text-align: center;">
         <h1>Xenia Web Services</h1>
+
+        <!-- ChromeHounds Neroimus War: online / total players by nation (data from /chapi/api/players-by-nation) -->
+        <div id="nation_stats">
+          <table class="nation-table">
+            <thead>
+              <tr>
+                <th class="nation-A">Tarakia</th>
+                <th class="nation-B">Morskoj</th>
+                <th class="nation-C">Sal Kar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="nation-A"><span class="online" id="nation-A-online">&ndash;</span> / <span class="total" id="nation-A-total">&ndash;</span></td>
+                <td class="nation-B"><span class="online" id="nation-B-online">&ndash;</span> / <span class="total" id="nation-B-total">&ndash;</span></td>
+                <td class="nation-C"><span class="online" id="nation-C-online">&ndash;</span> / <span class="total" id="nation-C-total">&ndash;</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="nation-legend">online / total players</div>
+        </div>
 
         <div id="header">
           <a href="https://github.com/AdrianCassar/xenia-canary" target="_blank">Github</a>
